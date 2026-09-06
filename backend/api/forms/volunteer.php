@@ -17,7 +17,7 @@ $occupation  = trim($body['occupation']  ?? '');
 $volunteerType = $body['volunteerType']  ?? [];
 $projects    = $body['projects']         ?? [];
 
-if (!$firstName || !$lastName || !$email || !$phone || !$city || !$dob || !$occupation || empty($volunteerType) || empty($projects)) {
+if (!$firstName || !$lastName || !$phone || empty($volunteerType) || empty($projects)) {
     jsonResponse(['success' => false, 'error' => 'Missing required fields'], 400);
 }
 
