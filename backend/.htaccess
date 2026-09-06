@@ -1,0 +1,19 @@
+Options -Indexes
+
+# Route clean URLs to PHP files
+RewriteEngine On
+
+RewriteRule ^api/donations/create-order$       api/donations/create-order.php [L]
+RewriteRule ^api/donations/verify-payment$     api/donations/verify-payment.php [L]
+RewriteRule ^api/donations/verify-subscription$ api/donations/verify-subscription.php [L]
+RewriteRule ^api/forms/volunteer$              api/forms/volunteer.php [L]
+RewriteRule ^api/forms/corporate$              api/forms/corporate.php [L]
+RewriteRule ^api/forms/contact$                api/forms/contact.php [L]
+RewriteRule ^api/partnership-inquiry$          api/partnership-inquiry.php [L]
+RewriteRule ^api/contact-ceo$                  api/contact-ceo.php [L]
+
+# Security: block direct access to config
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
