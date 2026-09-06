@@ -14,10 +14,44 @@ $phone       = trim($body['phone']       ?? '');
 $city        = trim($body['city']        ?? '');
 $dob         = trim($body['dob']         ?? '');
 $occupation  = trim($body['occupation']  ?? '');
-$volunteerType = $body['volunteerType']  ?? [];
-$projects    = $body['projects']         ?? [];
+$volunteerType     = $body['volunteerType']     ?? [];
+$projects          = $body['projects']          ?? [];
+$responseCategory  = trim($body['responseCategory'] ?? '');
 
-if (!$firstName || !$lastName || !$phone || empty($volunteerType) || empty($projects)) {
+// ── Quick "Childhood Ally" homepage sign-ups go to their own table ───────────
+if ($responseCategory === 'supporter') {
+    if (!$firstName || !$phone) {
+        jsonResponse(['success' => false, 'error' => 'Missing required fields'], 400);
+    }
+
+    try {
+        $db   = getDB();
+        $stmt = $db->prepare("INSERT INTO childhood_allies
+            (id, first_name, last_name, phone, campaign_scope, communication_consent, consent_version, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt->execute([
+            generateUUID(), $firstName, $lastName ?: 'Ally', $phone,
+            trim($body['campaignScope'] ?? ''),
+            !empty($body['communicationConsent']) ? 1 : 0,
+            trim($body['consentVersion'] ?? ''),
+        ]);
+
+        sendEmail(
+            "[HUManity] New Childhood Ally: {$firstName} {$lastName}",
+            "New Childhood Ally Sign-up\n-------------------------\nName: {$firstName} {$lastName}\nPhone: {$phone}\nCampaign: " . trim($body['campaignScope'] ?? '') . "\nSubmitted at: " . date('Y-m-d H:i:s')
+        );
+
+        jsonResponse(['success' => true, 'message' => 'Ally signal recorded']);
+
+    } catch (Exception $e) {
+        error_log("childhood ally form error: " . $e->getMessage());
+        jsonResponse(['success' => false, 'error' => $e->getMessage()], 400);
+    }
+    exit;
+}
+
+// ── Full volunteer application flow ──────────────────────────────────────────
+if (!$firstName || !$lastName || !$email || !$phone || !$city || !$dob || !$occupation || empty($volunteerType) || empty($projects)) {
     jsonResponse(['success' => false, 'error' => 'Missing required fields'], 400);
 }
 

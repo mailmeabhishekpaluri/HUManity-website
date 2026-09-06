@@ -28,7 +28,7 @@ if (!isset($_SESSION['admin'])) { ?>
 </div></body></html>
 <?php exit; }
 
-$allowed_tables = ['donations','volunteer_applications','contact_messages','corporate_partnerships','partnership_inquiries','ceo_contacts'];
+$allowed_tables = ['donations','volunteer_applications','childhood_allies','contact_messages','corporate_partnerships','partnership_inquiries','ceo_contacts'];
 $db = getDB();
 
 // ── Delete selected rows ─────────────────────────────────────────────────────
@@ -68,6 +68,7 @@ if (!in_array($active, $allowed_tables)) $active = 'donations';
 $tables = [
     'donations'              => 'Donations',
     'volunteer_applications' => 'Volunteers',
+    'childhood_allies'       => 'Childhood Allies',
     'contact_messages'       => 'Contact',
     'corporate_partnerships' => 'Corporate',
     'partnership_inquiries'  => 'Partnerships',

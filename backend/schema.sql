@@ -33,6 +33,17 @@ CREATE TABLE IF NOT EXISTS volunteer_applications (
     created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS childhood_allies (
+    id                     VARCHAR(36)  PRIMARY KEY,
+    first_name             VARCHAR(100) NOT NULL,
+    last_name              VARCHAR(100) NOT NULL,
+    phone                  VARCHAR(20)  NOT NULL,
+    campaign_scope         VARCHAR(255),
+    communication_consent  TINYINT(1)   NOT NULL DEFAULT 0,
+    consent_version        VARCHAR(100),
+    created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS corporate_partnerships (
     id                 VARCHAR(36)  PRIMARY KEY,
     poc_name           VARCHAR(255) NOT NULL,
