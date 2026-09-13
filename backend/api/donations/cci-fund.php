@@ -11,11 +11,30 @@ const CCI_GOAL = 60000000; // paise
 function cciReply(array $body, int $status = 200): void {
     http_response_code($status); echo json_encode($body); exit;
 }
-function cciKey(): string { return getenv('CCI_RAZORPAY_KEY_ID') ?: ''; }
-function cciSecret(): string { return getenv('CCI_RAZORPAY_KEY_SECRET') ?: ''; }
+// This fundraiser shares the already-configured HUManity Razorpay account.
+// Dedicated environment variables can override these later without changing code.
+function cciKey(): string { return getenv('CCI_RAZORPAY_KEY_ID') ?: RAZORPAY_KEY_ID; }
+function cciSecret(): string { return getenv('CCI_RAZORPAY_KEY_SECRET') ?: RAZORPAY_KEY_SECRET; }
 function cciMode(): string { return strpos(cciKey(), 'rzp_live_') === 0 ? 'live' : 'test'; }
-function cciEnabled(): bool {
-    return getenv('CCI_FUND_ENABLED') === '1' && cciKey() !== '' && cciSecret() !== '' && (getenv('CCI_RAZORPAY_WEBHOOK_SECRET') ?: '') !== '';
+function cciEnabled(): bool { return cciKey() !== '' && cciSecret() !== ''; }
+function cciEnsureSchema(PDO $db): void {
+    $db->exec("CREATE TABLE IF NOT EXISTS cci_fund_donations (
+        id CHAR(32) PRIMARY KEY,
+        campaign VARCHAR(80) NOT NULL,
+        name VARCHAR(120) NOT NULL,
+        email VARCHAR(254) NOT NULL,
+        phone VARCHAR(20) NOT NULL,
+        amount_paise BIGINT UNSIGNED NOT NULL,
+        currency CHAR(3) NOT NULL DEFAULT 'INR',
+        mode VARCHAR(4) NOT NULL,
+        razorpay_order_id VARCHAR(100) UNIQUE,
+        razorpay_payment_id VARCHAR(100) UNIQUE,
+        amount_refunded_paise BIGINT UNSIGNED NOT NULL DEFAULT 0,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        confirmed_at DATETIME NULL,
+        INDEX campaign_status (campaign, mode, status)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 function cciProvider(string $method, string $path, ?array $data = null): array {
     $ch = curl_init('https://api.razorpay.com/v1/' . $path);
@@ -52,7 +71,9 @@ function cciConfirm(PDO $db, array $payment): array {
 try {
     $method = $_SERVER['REQUEST_METHOD'];
     $action = $_GET['action'] ?? 'totals';
-    if ($method === 'GET' && $action === 'totals') cciReply(cciTotals(getDB()));
+    $db = getDB();
+    cciEnsureSchema($db);
+    if ($method === 'GET' && $action === 'totals') cciReply(cciTotals($db));
     if ($method !== 'POST') cciReply(['success'=>false,'error'=>'Method not allowed'],405);
     if (!cciEnabled()) cciReply(['success'=>false,'error'=>'This fundraiser is not accepting payments yet. Please check back shortly.'],503);
     if ((int)($_SERVER['CONTENT_LENGTH'] ?? 0) > 65536) cciReply(['success'=>false,'error'=>'Request too large'],413);
@@ -60,10 +81,10 @@ try {
     if (!is_string($raw) || strlen($raw) > 65536) cciReply(['success'=>false,'error'=>'Request too large'],413);
     $body = json_decode($raw, true);
     if (!is_array($body)) cciReply(['success'=>false,'error'=>'Invalid request'],400);
-    $db = getDB();
     if ($action === 'webhook') {
         $sig = $_SERVER['HTTP_X_RAZORPAY_SIGNATURE'] ?? '';
-        if (!hash_equals(hash_hmac('sha256',$raw,getenv('CCI_RAZORPAY_WEBHOOK_SECRET')), $sig)) cciReply(['success'=>false],401);
+        $webhookSecret = getenv('CCI_RAZORPAY_WEBHOOK_SECRET') ?: '';
+        if ($webhookSecret === '' || !hash_equals(hash_hmac('sha256',$raw,$webhookSecret), $sig)) cciReply(['success'=>false],401);
         $event = $body['event'] ?? '';
         if (!in_array($event,['payment.captured','order.paid','refund.processed'],true)) cciReply(['success'=>true]);
         $paymentId = $body['payload']['payment']['entity']['id'] ?? $body['payload']['refund']['entity']['payment_id'] ?? '';
