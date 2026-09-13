@@ -1,46 +1,38 @@
-# Indian Gypsy Children Home fundraiser
+# HCCF fundraiser and shared donation records
 
-Local preview: http://127.0.0.1:8080/wheelsofhope/fund
+The original HCCF page, ₹1.8 crore campaign and 30-CCI plan remain intact. The reusable institution section includes the Indian Gypsy Children Home, five rotating supplied photos and a ₹6 lakh yearly goal. Up to 30 real stories can be added in `stories.json`; each additional story requires its own backend campaign association before collecting donations.
 
-The original HCCF fund page is preserved in full, including its original design, ₹1.8 crore campaign goal, 30-CCI plan, crowdfunding equation and closing campaign message. One reusable stories section is inserted immediately before the closing message. These files are included in the website repository. A push to main triggers the existing Hostinger deployment workflow. This .hccf directory is excluded from deployment.
+## Donation popup and progress
 
-## Included
+“Support this home” opens the amber donation popup with one-time/monthly choices, preset/custom amounts, name as government ID, email, Indian mobile number, ID type and ID number. ID types match the main page: PAN, Aadhaar and ration card. No document upload is requested.
 
-- One featured home: the Indian Gypsy Children Home, with its ₹6 lakh goal, concise story, expandable needs and donation form.
-- Five supplied photos in a rotating carousel with previous/next and play/pause controls. Rotation pauses on hover/focus or outside the viewport, and respects reduced-motion preferences.
-- Blue/amber styling consistent with the existing fund page; side-by-side gallery and story on desktop, stacked on mobile.
-- `stories.json` holds independent home records. Add up to 30 real stories; the list displays six at a time with a View more homes button. No placeholder CCIs or fabricated totals are included.
-- Each home has a unique share anchor, goal, photo set and payment API configuration. A newly added home must have its own matching backend campaign configuration before collecting donations; the current PHP endpoint remains specific to the Suryapet home. Do not reuse it for another CCI.
-- Verified progress, goal-reached state and the existing tested campaign-specific Razorpay integration are retained.
+HCCF monthly subscriptions have 12 monthly charges. After the first full captured instalment is verified and the subscription is active/authenticated, ₹500/month counts as ₹6,000 and ₹1,000/month as ₹12,000 toward the yearly goal. “Funded & committed” is separate from “received so far.” Renewals add receipts without adding the annual commitment again. Refunds reduce totals; inactive/cancelled commitments revert to actual net receipts. New orders stop at the committed yearly goal; already-open orders and recurring instalments can still complete.
 
-## What is still needed before live collection
+## Existing admin dashboard
 
-1. Confirm whether this home already has money raised. The new table cannot infer or import previous donations. No prior amount was supplied or invented.
-2. Confirm the item-wise budget/allocation and add updates as documented. ₹6 lakh is a requested campaign goal, not a verified bill of quantities. No claim of tax exemption eligibility is made.
-3. Apply `.hccf/cci-fund-schema.sql` to the existing database. Keep this SQL file outside the published web root.
-4. The fundraiser now uses the existing HUManity Razorpay configuration already present on the server. Optional `CCI_RAZORPAY_KEY_ID` and `CCI_RAZORPAY_KEY_SECRET` environment variables can override it later. The table is created automatically on the first fundraiser request.
-5. In Razorpay, confirm automatic payment capture and register the webhook URL `https://humanityorg.foundation/backend/api/donations/cci-fund.php?action=webhook` for `payment.captured`, `order.paid` and `refund.processed`. Add its webhook secret as `CCI_RAZORPAY_WEBHOOK_SECRET` on the server. The browser checkout can verify a completed payment immediately; the webhook is needed to reconcile payments when a browser closes or a refund happens.
-6. Validate order creation, capture, cancellation, verification retries, webhook replay, refunds and totals against a test database/Razorpay test account. PHP helper tests are not an end-to-end payment test. Public totals count live-mode donations only.
-7. The existing admin dashboard does not yet list the new table. Campaign records can be reconciled by an authorised operator through the database and Razorpay. Add an admin view before handing over routine campaign operations. Configure host-level request throttling; the endpoint only has per-email order throttling.
-8. Approve and deploy the frontend overlay and the two PHP files after testing. The overlay is not a full website copy: it relies on unchanged files from the original website. Do not upload this README, tests, build script, or migration under a public path.
+`/backend/admin.php?tab=donations` combines main-page and HCCF donors, including government ID fields, per-payment amount, actual receipts, annual commitment, subscription state and provider references. `?tab=donation_payments` lists each instalment. Both can be exported through the authenticated dashboard. Donation payment records have no delete controls. “Sync payments” reconciles a donor's order/subscription with Razorpay and provides a recovery path when browser confirmation or webhooks are missed.
 
-The goal stops new orders once the confirmed total reaches ₹6 lakh. Orders already open can complete after the goal is reached, so the final total may exceed the target. Decide how excess funds should be allocated and publish that policy before launch.
+Government IDs stay in the existing authenticated database/dashboard flow. Public totals and Razorpay notes do not include them. The payment ledger has a unique provider payment ID; order/subscription, amount, currency and captured status are checked against provider data before recording new money.
 
-## Working files
+## Razorpay configuration still required outside this repository
 
-`fundraiser.js` is the readable new component. `build.py` retains the original HCCF page function byte-for-byte (only renaming its function), adds a wrapper that inserts the stories section before its last section, and writes a content-hashed JavaScript bundle plus updated index.html. The original editable React source is not present in the supplied website. Port this component back to the original application source when available.
+The existing `backend/api/config.php` supplies the live Razorpay account and database connection. HCCF optionally supports `CCI_RAZORPAY_KEY_ID` and `CCI_RAZORPAY_KEY_SECRET` overrides; keep both pages on the same Razorpay account for the shared webhook. Do not commit credentials. Subscription products/payment methods must be enabled for the account. Keep automatic capture enabled.
 
-`../serve.py` serves `deploy/` files first and falls back to the original website files. It blocks backend access and external submission requests. The local form deliberately does not open a real payment checkout.
+For unattended renewals, missed-checkout recovery, refunds and subscription status changes:
 
-## Verification
+1. Set `CCI_RAZORPAY_WEBHOOK_SECRET` in the hosting environment to a private random value.
+2. Add this Razorpay webhook using the same secret: `https://humanityorg.foundation/backend/api/donations/cci-fund.php?action=webhook`.
+3. Enable `payment.captured`, `order.paid`, `refund.processed` and all available subscription lifecycle events: `subscription.authenticated`, `subscription.activated`, `subscription.charged`, `subscription.completed`, `subscription.updated`, `subscription.pending`, `subscription.halted`, `subscription.cancelled`, `subscription.paused`, `subscription.resumed`.
+4. Verify successful webhook delivery in Razorpay and run a controlled test-mode payment, renewal, cancellation and refund. No real payment has been made by these automated checks.
 
-- JavaScript syntax check of source and generated bundle.
-- Component tests: original layout and section order preserved, reusable card and goal states, five-photo carousel controls, six-at-a-time rendering for a 30-home dataset. Exact original component and unrelated bundled code preservation verified.
-- PHP 8.x WebAssembly runtime: endpoint syntax check passed; executed payment helper tests passed for stored-order signature binding, invalid signatures, amount/currency/order/capture mismatches and refund bounds. These tests use synthetic data, with no real provider or database calls.
-- Browser rendering remains unverified because the browser tool could not verify its required security policy. No live donation, database migration, credential change or publication was performed.
+The webhook rejects requests when its secret is absent. The admin shows a setup notice in that case. Deploying this code does not prove that the hosting environment or Razorpay webhook has been configured. Checkout confirmation records verified first payments immediately; automatic later updates require the webhook or an admin Sync payments action. Historic renewals not already recorded can be imported using Sync payments on each existing subscription. Existing main-page subscription durations are preserved.
 
-Payment implementation references: [Razorpay Standard Checkout](https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/integration-steps/) and [webhook validation](https://razorpay.com/docs/webhooks/validate-test/).
+Schema additions are automatic and additive through `donationEnsureSchema()`: donor ID/subscription columns on the CCI table, subscription status on main donations, and the shared `donation_payments` ledger. Existing completed first-payment records are preserved; they are not retroactively re-verified by the migration. No separate SQL import is required.
 
+## Maintenance and verification
 
-## Source handoff
-The readable component and story records are stored beside this file. They are integrated into the content-hashed JavaScript bundle referenced by index.html; they are not loaded directly at runtime. The original editable app source was not available. Rebuild the integration when editing these records; changing JSON alone does not change the published page.
+The supplied site contains compiled deployment files, not the original editable React project. The readable component is `fundraiser.js` (workspace `src/fundraiser.js`). The workspace `build.py` preserves the original HCCF function and inserts its wrapper/section, then generates a content-hashed bundle and versioned stylesheet reference. Keep maintenance files under `.hccf/`, which the deployment excludes.
+
+Local preview: `http://127.0.0.1:8080/wheelsofhope/fund`. Its server blocks backend calls and real payments. Browser checks covered the popup, monthly switching, required ID fields, Escape/focus return and a 390px layout without horizontal overflow. Automated checks cover React rendering, 30-home pagination, PHP syntax, stored-order/subscription signature binding, amount/currency/capture checks, yearly arithmetic, renewal replay, refunds, cancellation and combined admin records. Database integration tests use synthetic SQLite fixtures with translated MySQL locking/upsert syntax; they do not verify production MySQL concurrency or execute real Razorpay payments.
+
+References: [Razorpay subscriptions integration](https://razorpay.com/docs/payments/subscriptions/integration-guide/), [subscription invoices](https://razorpay.com/docs/api/payments/subscriptions/fetch-invoices/) and [subscription webhooks](https://razorpay.com/docs/webhooks/subscriptions/).

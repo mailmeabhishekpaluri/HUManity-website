@@ -9,6 +9,10 @@ function HccfStoryCard({story}) {
   const [receipt, setReceipt] = N.useState(null);
   const [shareMessage, setShareMessage] = N.useState('');
   const [retry, setRetry] = N.useState(null);
+  const [donationType, setDonationType] = N.useState('once');
+  const [open, setOpen] = N.useState(false);
+  const [checkoutOpen, setCheckoutOpen] = N.useState(false);
+  const dialogRef = N.useRef(null);
   const formRef = N.useRef(null);
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
   const api = story.api;
@@ -25,6 +29,12 @@ function HccfStoryCard({story}) {
     const timer = setInterval(refresh, 30000);
     return () => { clearInterval(timer);  };
   }, [refresh]);
+  N.useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (open && !checkoutOpen && !dialog.open) dialog.showModal();
+    else if ((!open || checkoutOpen) && dialog.open) dialog.close();
+  }, [open, checkoutOpen]);
   async function request(action, data) {
     const response = await fetch(api + '?action=' + action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
     const result = await response.json().catch(() => ({}));
@@ -32,6 +42,7 @@ function HccfStoryCard({story}) {
     return result;
   }
   async function verify(payload) {
+    setCheckoutOpen(false);
     setBusy(true);
     setMessage('Confirming your payment. Please keep this page open.');
     try {
@@ -56,18 +67,20 @@ function HccfStoryCard({story}) {
     const fields = new FormData(event.currentTarget);
     setBusy(true);
     try {
-      const order = await request('create', {amount:Number(amount), name:fields.get('name'), email:fields.get('email'), phone:fields.get('phone')});
+      const order = await request('create', {amount:Number(amount), donationType, name:fields.get('name'), email:fields.get('email'), phone:'+91'+fields.get('phone'), idType:fields.get('idType'), idNumber:fields.get('idNumber')});
       const checkout = new window.Razorpay({
-        key:order.keyId, order_id:order.orderId, amount:order.amount, currency:'INR',
+        key:order.keyId, ...(order.isSubscription ? {subscription_id:order.subscriptionId} : {order_id:order.orderId, amount:order.amount, currency:'INR'}),
         name:'HUManity', description:story.name + ' · ' + story.location,
-        prefill:{name:fields.get('name'), email:fields.get('email'), contact:fields.get('phone')},
+        prefill:{name:fields.get('name'), email:fields.get('email'), contact:'+91'+fields.get('phone')},
         theme:{color:'#3191c2'},
         handler:payload => verify({...payload, donation_id:order.donationId}),
-        modal:{ondismiss:() => { setBusy(false); setMessage('Checkout closed. You can return whenever you are ready.'); }}
+        modal:{ondismiss:() => { setCheckoutOpen(false); setBusy(false); setMessage('Checkout closed. You can return whenever you are ready.'); }}
       });
       checkout.on('payment.failed', () => { setMessage('The payment was not completed. If an amount was debited, check with your bank before retrying.'); });
+      dialogRef.current?.close();
+      setCheckoutOpen(true);
       checkout.open();
-    } catch (error) { setMessage(error.message); setBusy(false); }
+    } catch (error) { setCheckoutOpen(false); setMessage(error.message); setBusy(false); }
   }
   async function share() {
     const url = 'https://humanityorg.foundation/wheelsofhope/fund#' + story.id;
@@ -77,7 +90,7 @@ function HccfStoryCard({story}) {
       else { await navigator.clipboard.writeText(url); setShareMessage('Fundraiser link copied'); }
     } catch (error) { if (error.name !== 'AbortError') setShareMessage('Share this link: ' + url); }
   }
-  const raised = stats ? stats.raised : null;
+  const raised = stats ? (stats.committed ?? stats.raised) : null;
   const percent = raised === null ? null : Math.min(100, raised / goal * 100);
   const complete = raised !== null && raised >= goal;
   return h('article',{className:'hccf-story-card',id:story.id},
@@ -90,20 +103,29 @@ function HccfStoryCard({story}) {
       h('details',{className:'hccf-needs-detail'},h('summary',null,'The home’s priority needs'),
         h('ul',null,story.needs.map(need=>h('li',{key:need},need))),h('p',null,story.budgetNote)),
       h('div',{className:'hccf-card-progress'},
-        h('div',{className:'hccf-progress-heading'},h('strong',null,'Goal: ' + money(goal)),h('span',null,raised===null?'Raised: awaiting confirmation':money(raised)+' raised')),
+        h('div',{className:'hccf-progress-heading'},h('strong',null,'Yearly goal: ' + money(goal)),h('span',null,raised===null?'Commitments: awaiting confirmation':money(raised)+' funded & committed')),
         h('div',{className:'hccf-meter',role:'progressbar','aria-label':story.name+' fundraising progress','aria-valuemin':0,'aria-valuemax':goal,...(raised===null?{'aria-valuetext':'Awaiting confirmed total'}:{'aria-valuenow':Math.min(goal,raised)})},h('div',{style:{width:(percent||0)+'%'}})),
-        h('p',{className:'hccf-progress-note'},complete?'Goal reached — thank you!':percent===null?'Progress will reflect verified donations to this home.':Math.floor(percent)+'% achieved · '+money(Math.max(0,goal-raised))+' to go')),
-      h('details',{className:'hccf-give-detail'},h('summary',null,complete?'Goal reached · Thank you':receipt?'Your donation confirmation':'Support this home →'),
+        h('p',{className:'hccf-progress-note'},complete?'Yearly goal funded & committed — thank you!':percent===null?'Confirmed monthly support counts toward a 12-month commitment.':Math.floor(percent)+'% funded & committed · '+money(Math.max(0,goal-raised))+' to go'),
+        stats && h('p',{className:'hccf-progress-note'},money(stats.received ?? stats.raised)+' received so far. Monthly commitments include future instalments.')),
+      h('button',{className:'hccf-support-button',type:'button',onClick:()=>setOpen(true)},complete?'View campaign progress':receipt?'Your donation confirmation':'Support this home →'),
+      h('dialog',{ref:dialogRef,className:'hccf-donation-dialog','aria-labelledby':story.id+'-donate-title',onCancel:event=>{if(busy)event.preventDefault();else setOpen(false);}},
+        h('header',{className:'hccf-modal-heading'},h('button',{type:'button',className:'hccf-modal-close','aria-label':'Close donation form',disabled:busy,onClick:()=>setOpen(false)},'×'),h('h2',{id:story.id+'-donate-title'},'Make a Donation'),h('p',null,'Your support transforms lives'),h('small',null,story.name)),
         h('div',{className:'hccf-checkout'},
             complete?h('p',{className:'cci-success'},'Thank you for helping reach this home’s goal. Follow the campaign updates as support is put to work.'):
             receipt?h('div',{className:'cci-success',role:'status'},h('h3',null,'Thank you for showing up.'),h('p',null,money(receipt.amount)+' has been confirmed for this home.'),h('small',null,'Payment reference: '+receipt.paymentId)):
             h('form',{ref:formRef,onSubmit:donate},
-              h('fieldset',{disabled:busy||Boolean(retry)},h('legend',null,'Choose your contribution'),
-                h('div',{className:'cci-amounts'},[500,1000,2500,5000].map(v=>h('button',{type:'button',key:v,'aria-pressed':amount===String(v),onClick:()=>setAmount(String(v))},money(v)))),
-                h('label',{className:'cci-field'},h('span',null,'Your amount (₹)'),h('input',{type:'number',name:'amount',min:1,max:goal,step:1,inputMode:'numeric',required:true,value:amount,onChange:e=>setAmount(e.target.value)})),
-                h('div',{className:'cci-donor-fields'},[['name','Full name','text','name'],['email','Email address','email','email'],['phone','Mobile number','tel','tel']].map(([name,label,type,auto])=>h('label',{className:'cci-field',key:name},h('span',null,label),h('input',{name,type,autoComplete:auto,required:true,maxLength:name==='name'?120: name==='email'?254:20,...(name==='phone'?{pattern:'[+0-9 ()-]{10,20}',inputMode:'tel'}:{})})))),
-                h('button',{className:'cci-donate-button',type:'submit'},busy?'Please wait…':'Donate '+(Number(amount)>0?money(amount):'now')+' →'),
-                h('p',{className:'cci-payment-note'},'One-time donation · Payments via Razorpay'),
+              h('fieldset',{disabled:busy||Boolean(retry)},h('legend',null,'Choose Donation Type'),
+                h('div',{className:'hccf-donation-types'},[['once','Give Once'],['monthly','Give Monthly']].map(([value,label])=>h('button',{key:value,type:'button','aria-pressed':donationType===value,onClick:()=>setDonationType(value)},label,value==='monthly'&&h('small',null,'Support for 12 months')))),
+                donationType==='monthly'&&h('p',{className:'hccf-annual-explainer',role:'status'},money(Number(amount)||0)+' per month × 12 months = '+money((Number(amount)||0)*12)+' toward this home’s yearly goal. This is a 12-month commitment, collected monthly. It is counted after your first payment is confirmed; future instalments are not money received.'),
+                h('p',{className:'hccf-form-label'},'Select Amount (₹)'),
+                h('div',{className:'cci-amounts'},[500,1000,1500,3000,5000,10000].map(v=>h('button',{type:'button',key:v,'aria-pressed':amount===String(v),onClick:()=>setAmount(String(v))},money(v)))),
+                h('label',{className:'cci-field'},h('span',null,donationType==='monthly'?'Monthly amount (₹) *':'Your amount (₹) *'),h('input',{type:'number',name:'amount',min:1,max:goal,step:1,inputMode:'numeric',required:true,value:amount,onChange:e=>setAmount(e.target.value)})),
+                h('h3',{className:'hccf-personal-heading'},'Personal Details'),
+                h('div',{className:'cci-donor-fields'},[['name','Full Name (as per government ID) *','text','name'],['email','Email Address *','email','email'],['phone','Phone Number (+91) *','tel','tel-national']].map(([name,label,type,auto])=>h('label',{className:'cci-field',key:name},h('span',null,label),h('input',{name,type,autoComplete:auto,required:true,maxLength:name==='name'?120:name==='email'?254:10,...(name==='phone'?{pattern:'[0-9]{10}',inputMode:'tel'}:{})})))),
+                h('label',{className:'cci-field'},h('span',null,'ID Proof Type *'),h('select',{name:'idType',required:true,defaultValue:''},h('option',{value:'',disabled:true},'Select ID Type'),h('option',{value:'pan'},'PAN Card'),h('option',{value:'aadhaar'},'Aadhaar Card'),h('option',{value:'ration'},'Ration Card'))),
+                h('label',{className:'cci-field'},h('span',null,'ID Number *'),h('input',{name:'idNumber',type:'text',required:true,maxLength:100,autoComplete:'off',placeholder:'Enter ID number'})),
+                h('button',{className:'cci-donate-button',type:'submit'},busy?'Please wait…':'Donate '+(Number(amount)>0?money(amount):'now')+(donationType==='monthly'?' / month':'')+' →'),
+                h('p',{className:'cci-payment-note'},'Secure payment powered by Razorpay'),
                 h('p',{className:'cci-privacy-note'},'Your details are used to process and acknowledge your donation. ',h('a',{href:'/privacy'},'Privacy policy')))),
             message&&h('p',{className:receipt?'cci-status cci-success':'cci-status',role:'status'},message),
             retry&&h('button',{className:'cci-donate-button',type:'button',disabled:busy,onClick:()=>verify(retry)},busy?'Checking…':'Check payment confirmation'),

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/donation-records.php';
 setCorsHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -22,6 +23,7 @@ if (!$name || !$email || !$phone || $amount <= 0 || !$idType || !$idNumber) {
 
 try {
     $db = getDB();
+    donationEnsureSchema($db);
     $id = generateUUID();
 
     if ($donationType === 'monthly') {

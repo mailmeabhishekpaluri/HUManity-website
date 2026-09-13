@@ -28,14 +28,38 @@ if (!isset($_SESSION['admin'])) { ?>
 </div></body></html>
 <?php exit; }
 
-$allowed_tables = ['donations','volunteer_applications','childhood_allies','contact_messages','corporate_partnerships','partnership_inquiries','ceo_contacts'];
+$allowed_tables = ['donations','donation_payments','volunteer_applications','childhood_allies','contact_messages','corporate_partnerships','partnership_inquiries','ceo_contacts'];
 $db = getDB();
+require_once __DIR__.'/api/donations/donation-records.php';
+require_once __DIR__.'/api/donations/donation-admin.php';
+require_once __DIR__.'/api/donations/donation-webhook.php';
+donationEnsureSchema($db);
+header('Cache-Control: no-store');
+if(empty($_SESSION['donation_csrf']))$_SESSION['donation_csrf']=bin2hex(random_bytes(32));
+if($_SERVER['REQUEST_METHOD']==='POST'&&isset($_POST['sync_donation'])){
+    if(!is_string($_POST['csrf']??null)||!hash_equals($_SESSION['donation_csrf'],$_POST['csrf'])){http_response_code(403);exit('Invalid request');}
+    $parts=explode(':',(string)$_POST['sync_donation'],2);
+    try{
+        $source=$parts[0];$table=donationTable($source);
+        $stmt=$db->prepare("SELECT * FROM `$table` WHERE id=?");$stmt->execute([$parts[1]??'']);$donation=$stmt->fetch();
+        if(!$donation)throw new RuntimeException('Unknown donation');
+        if(($donation['donation_type']??'once')==='monthly'&&!empty($donation['razorpay_subscription_id']))donationSyncSubscription($db,$source,$donation);
+        elseif(!empty($donation['razorpay_order_id'])){
+            $payments=donationProvider('GET','orders/'.rawurlencode($donation['razorpay_order_id']).'/payments',null,$source);
+            foreach($payments['items']??[] as $payment)if(($payment['captured']??false)===true)donationRecordPayment($db,$source,$donation,$payment);
+        }
+        $_SESSION['donation_notice']='Payment records refreshed from Razorpay.';
+    }catch(Throwable $e){error_log('Donation admin sync: '.$e->getMessage());$_SESSION['donation_notice']='Could not refresh this donation. Please retry shortly.';}
+    header('Location: ?tab=donations');exit;
+}
+$donationRows=donationAdminRows($db);
+$paymentRows=donationAdminPayments($db);
 
 // ── Delete selected rows ─────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_ids'], $_POST['delete_table'])) {
     $table = $_POST['delete_table'];
     $ids   = $_POST['delete_ids'];
-    if (in_array($table, $allowed_tables) && is_array($ids) && count($ids)) {
+    if (in_array($table, $allowed_tables) && !in_array($table,['donations','donation_payments'],true) && is_array($ids) && count($ids)) {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $db->prepare("DELETE FROM `$table` WHERE id IN ($placeholders)")->execute($ids);
     }
@@ -45,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_ids'], $_POST[
 // ── Delete all ───────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_all_table'])) {
     $table = $_POST['delete_all_table'];
-    if (in_array($table, $allowed_tables)) $db->exec("DELETE FROM `$table`");
+    if (in_array($table, $allowed_tables) && !in_array($table,['donations','donation_payments'],true)) $db->exec("DELETE FROM `$table`");
     header('Location: ?tab=' . $table); exit;
 }
 
@@ -53,11 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_all_table'])) 
 if (isset($_GET['export'])) {
     $table = $_GET['export'];
     if (!in_array($table, $allowed_tables)) exit('Invalid');
-    $rows = $db->query("SELECT * FROM `$table` ORDER BY created_at DESC")->fetchAll();
+    $rows = $table==='donations'?$donationRows:($table==='donation_payments'?$paymentRows:$db->query("SELECT * FROM `$table` ORDER BY created_at DESC")->fetchAll());
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename="' . $table . '_' . date('Y-m-d') . '.csv"');
     $out = fopen('php://output', 'w');
-    if ($rows) { fputcsv($out, array_keys($rows[0])); foreach ($rows as $r) fputcsv($out, $r); }
+    if ($rows) { fputcsv($out, array_keys($rows[0])); foreach ($rows as $r) fputcsv($out, array_map(fn($v)=>is_string($v)&&preg_match('/^[=+@\\t\\r-]/',$v)?"'".$v:$v,$r)); }
     fclose($out); exit;
 }
 
@@ -67,6 +91,7 @@ if (!in_array($active, $allowed_tables)) $active = 'donations';
 
 $tables = [
     'donations'              => 'Donations',
+    'donation_payments'      => 'Payment History',
     'volunteer_applications' => 'Volunteers',
     'childhood_allies'       => 'Childhood Allies',
     'contact_messages'       => 'Contact',
@@ -76,9 +101,9 @@ $tables = [
 ];
 
 $counts = [];
-foreach ($tables as $t => $l) $counts[$t] = $db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
+foreach ($tables as $t => $l) $counts[$t] = $t==='donations'?count($donationRows):($t==='donation_payments'?count($paymentRows):$db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn());
 
-$rows = $db->query("SELECT * FROM `$active` ORDER BY created_at DESC")->fetchAll();
+$rows = $active==='donations'?$donationRows:($active==='donation_payments'?$paymentRows:$db->query("SELECT * FROM `$active` ORDER BY created_at DESC")->fetchAll());
 $cols = $rows ? array_keys($rows[0]) : [];
 ?>
 <!DOCTYPE html>
@@ -159,6 +184,11 @@ $cols = $rows ? array_keys($rows[0]) : [];
 </nav>
 
 <div class="container">
+  <?php if(isset($_SESSION['donation_notice'])): ?><p style="color:#fbbf24;margin-bottom:14px"><?= htmlspecialchars($_SESSION['donation_notice']) ?></p><?php unset($_SESSION['donation_notice']); endif; ?>
+  <?php if (in_array($active,['donations','donation_payments'],true)): ?>
+    <p style="color:#94a3b8;font-size:13px;line-height:1.7;margin-bottom:18px;">Main-page and HCCF donations are shown together. Received amounts are payments collected, less recorded refunds. Yearly commitments include future monthly instalments and are not money received. Payment History lists each recorded instalment separately.</p>
+    <?php if(!getenv('CCI_RAZORPAY_WEBHOOK_SECRET')): ?><p style="color:#fbbf24;font-size:13px;line-height:1.7;margin-bottom:18px;">Automatic renewal updates need the Razorpay webhook connection. Until it is configured, use Sync payments to refresh a donation from Razorpay. Set CCI_RAZORPAY_WEBHOOK_SECRET on the server and use the matching secret for the webhook at /backend/api/donations/cci-fund.php?action=webhook.</p><?php endif; ?>
+  <?php endif; ?>
   <div class="toolbar">
     <div class="toolbar-left">
       Showing <strong><?= count($rows) ?></strong> <?= $tables[$active] ?> records &nbsp;·&nbsp; <?= date('d M Y, H:i:s') ?>
@@ -166,7 +196,7 @@ $cols = $rows ? array_keys($rows[0]) : [];
     <div class="toolbar-right">
       <a href="?tab=<?= $active ?>" class="btn btn-refresh">↻ Refresh</a>
       <a href="?export=<?= $active ?>" class="btn btn-export">⬇ Export CSV</a>
-      <?php if (!empty($rows)): ?>
+      <?php if (!empty($rows) && !in_array($active,['donations','donation_payments'],true)): ?>
         <button class="btn btn-delete-sel" id="btnStartSelect" onclick="startSelect()">🗑 Delete Selected</button>
         <button class="btn btn-confirm-del" id="btnConfirmDel" onclick="confirmDeleteSelected()">Delete (<span id="selCount">0</span>)</button>
         <button class="btn btn-cancel-sel"  id="btnCancelSel"  onclick="cancelSelect()">Cancel</button>
@@ -179,12 +209,14 @@ $cols = $rows ? array_keys($rows[0]) : [];
     <div class="empty">No records yet</div>
   <?php else: ?>
     <form method="POST" id="deleteForm">
+      <?php if($active==='donations'): ?><input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['donation_csrf']) ?>"><?php endif; ?>
       <input type="hidden" name="delete_table" value="<?= $active ?>">
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th class="chk"><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
             <th class="sno">S.No</th>
+            <?php if($active==='donations'): ?><th>Refresh from Razorpay</th><?php endif; ?>
             <?php foreach ($cols as $col): ?>
               <th><?= htmlspecialchars($col) ?></th>
             <?php endforeach; ?>
@@ -196,6 +228,7 @@ $cols = $rows ? array_keys($rows[0]) : [];
                   <input type="checkbox" name="delete_ids[]" value="<?= htmlspecialchars($row['id']) ?>" class="row-chk" onchange="updateCount()">
                 </td>
                 <td class="sno"><?= $i + 1 ?></td>
+                <?php if($active==='donations'): ?><td><button class="btn btn-refresh" type="submit" name="sync_donation" value="<?= htmlspecialchars($row['id']) ?>">Sync payments</button></td><?php endif; ?>
                 <?php foreach ($row as $key => $val): ?>
                   <td title="<?= htmlspecialchars((string)$val) ?>">
                     <?php if ($key === 'status'): ?>
