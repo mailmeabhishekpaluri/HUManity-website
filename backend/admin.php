@@ -34,15 +34,6 @@ require_once __DIR__.'/api/donations/donation-records.php';
 require_once __DIR__.'/api/donations/donation-admin.php';
 require_once __DIR__.'/api/donations/donation-webhook.php';
 donationEnsureSchema($db);
-if(($_GET['donation_check']??'')==='1'){
-    header('Content-Type: application/json');header('Cache-Control: no-store');$stage='donors';
-    try{
-        donationAdminRows($db);$stage='payments';donationAdminPayments($db);
-        foreach($allowed_tables as $table){if(in_array($table,['donations','donation_payments'],true))continue;$stage=$table;$db->query("SELECT COUNT(*) FROM `$table`")->fetchColumn();}
-        echo json_encode(['ok'=>true]);
-    }catch(Throwable $e){http_response_code(500);echo json_encode(['ok'=>false,'stage'=>$stage,'error'=>$e->getMessage()]);}
-    exit;
-}
 header('Cache-Control: no-store');
 if(empty($_SESSION['donation_csrf']))$_SESSION['donation_csrf']=bin2hex(random_bytes(32));
 if($_SERVER['REQUEST_METHOD']==='POST'&&isset($_POST['sync_donation'])){

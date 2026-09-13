@@ -7,7 +7,7 @@ function donationAdminRows(PDO $db): array {
         $table=donationTable($source);
         $stmt=$db->prepare("SELECT d.*,COALESCE(p.gross,0) gross,COALESCE(p.refunds,0) refunds,COALESCE(p.payments,0) payments
             FROM `$table` d LEFT JOIN (SELECT donation_id,SUM(amount_paise) gross,SUM(refunded_paise) refunds,COUNT(*) payments
-            FROM donation_payments WHERE source=? GROUP BY donation_id) p ON p.donation_id=d.id ORDER BY d.created_at DESC");
+            FROM donation_payments WHERE source=? GROUP BY donation_id) p ON BINARY p.donation_id=BINARY d.id ORDER BY d.created_at DESC");
         $stmt->execute([$source]);
         foreach($stmt->fetchAll() as $row){
             $row['amount_paise']=$source==='hccf'?(int)$row['amount_paise']:(int)$row['amount']*100;
@@ -29,7 +29,7 @@ function donationAdminPayments(PDO $db): array {
     $rows=[];
     foreach(['main','hccf'] as $source){
         $table=donationTable($source);
-        $stmt=$db->prepare("SELECT p.*,d.name,d.email,d.phone,d.id_type,d.id_number,d.donation_type FROM donation_payments p JOIN `$table` d ON d.id=p.donation_id WHERE p.source=? ORDER BY p.paid_at DESC");$stmt->execute([$source]);
+        $stmt=$db->prepare("SELECT p.*,d.name,d.email,d.phone,d.id_type,d.id_number,d.donation_type FROM donation_payments p JOIN `$table` d ON BINARY d.id=BINARY p.donation_id WHERE p.source=? ORDER BY p.paid_at DESC");$stmt->execute([$source]);
         foreach($stmt->fetchAll() as $row){$rows[]=['id'=>$row['payment_id'],'source'=>$source==='hccf'?'HCCF fundraiser':'Main donation page',
             'name_as_per_id'=>$row['name'],'email'=>$row['email'],'phone'=>$row['phone'],'id_proof_type'=>$row['id_type'],'id_number'=>$row['id_number'],
             'donation_type'=>$row['donation_type'],'paid_inr'=>(int)$row['amount_paise']/100,'refunded_inr'=>(int)$row['refunded_paise']/100,

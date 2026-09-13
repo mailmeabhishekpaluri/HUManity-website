@@ -158,7 +158,7 @@ function donationVerify(PDO $db, string $source, array $row, array $body): array
 }
 function donationCampaignTotals(PDO $db, string $campaign, int $goal): array {
     $stmt=$db->prepare("SELECT d.*,COALESCE(p.gross,0) gross,COALESCE(p.refunds,0) refunds FROM cci_fund_donations d
-        LEFT JOIN (SELECT donation_id,SUM(amount_paise) gross,SUM(refunded_paise) refunds FROM donation_payments WHERE source='hccf' AND mode='live' GROUP BY donation_id) p ON p.donation_id=d.id
+        LEFT JOIN (SELECT donation_id,SUM(amount_paise) gross,SUM(refunded_paise) refunds FROM donation_payments WHERE source='hccf' AND mode='live' GROUP BY donation_id) p ON BINARY p.donation_id=BINARY d.id
         WHERE d.campaign=? AND d.mode='live'");$stmt->execute([$campaign]);
     $received=0;$committed=0;
     foreach($stmt->fetchAll() as $row){$received+=max(0,(int)$row['gross']-(int)$row['refunds']);$committed+=donationCommitment($row,(int)$row['gross'],(int)$row['refunds']);}
