@@ -1,0 +1,23 @@
+[
+  {
+    "id": "indian-gypsy-children-home-suryapet",
+    "name": "The Indian Gypsy Children Home",
+    "location": "Suryapet, Telangana",
+    "established": "2002",
+    "residents": "15 boys",
+    "goal": 600000,
+    "api": "/backend/api/donations/cci-fund.php",
+    "appeal": "A stronger home for 15 growing boys.",
+    "story": "Bhukya Dhanpal and his wife maintain this home with limited external support, relying largely on local help and individual supporters. The boys live in small rooms in a tin/metal-sheet structure, with three washrooms serving the home.",
+    "need": "Help provide safe drinking water, everyday household equipment, storage, and resources for learning and play. Together, we can make daily life better for the children who call this place home.",
+    "needs": ["Water purifier and sanitation facilities", "Washing machine, mixer/grinder and kitchen equipment", "Shelves, storage boxes and chairs", "Weighing and height measurement equipment", "Computers, educational resources, sports and recreation"],
+    "budgetNote": "Item-wise costs and allocations will be confirmed before procurement. Support for the new building is subject to verification of construction documents and funding requirements.",
+    "photos": [
+      {"src":"/assets/cci-suryapet/exterior.jpg","caption":"The home’s current building in Suryapet"},
+      {"src":"/assets/cci-suryapet/storage.jpg","caption":"Shared storage for clothes and belongings"},
+      {"src":"/assets/cci-suryapet/sleeping-area.jpg","caption":"The home’s sleeping area"},
+      {"src":"/assets/cci-suryapet/sanitation.jpg","caption":"The washroom and water storage area"},
+      {"src":"/assets/cci-suryapet/home-sign.jpg","caption":"The Indian Gypsy Children Home"}
+    ]
+  }
+]
