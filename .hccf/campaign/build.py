@@ -107,9 +107,15 @@ api=OUT/'backend/api/donations';api.mkdir(parents=True,exist_ok=True)
 # The rest of the deployed app remains byte-for-byte unchanged. SPA visits redirect
 # to the lightweight static campaign route; direct ad traffic never loads the SPA.
 bundle=(SITE/'assets/index-D3rKJrP3.js').read_text()
-start=bundle.index('function nse()');end=bundle.index('function ',start+12)
-bridge='function nse(){N.useEffect(()=>{window.location.replace("/wheelsofhope/fund/"+window.location.search+window.location.hash)},[]);return N.createElement("main",{style:{padding:"80px 24px",textAlign:"center"}},N.createElement("a",{href:"/wheelsofhope/fund/"},"Open the HCCF campaign"))}\n'
-patched=bundle[:start]+bridge+bundle[end:]
+patched=bundle
+for component,route,label in [('nse','/wheelsofhope/fund/','Open the HCCF campaign'),('tie','/donate/','Open the HUManity donation page')]:
+    start=patched.index('function '+component+'()')
+    # Explicit boundaries for the pinned original bundle. The main donation
+    # component is followed by shared checkbox variables; preserve those too.
+    boundary='}function ase()' if component=='nse' else '}var ay="Checkbox",'
+    end=patched.index(boundary,start)+1
+    bridge='function '+component+'(){N.useEffect(()=>{window.location.replace("'+route+'"+window.location.search+window.location.hash)},[]);return N.createElement("main",{style:{padding:"80px 24px",textAlign:"center"}},N.createElement("a",{href:"'+route+'"},"'+label+'"))}\n'
+    patched=patched[:start]+bridge+patched[end:]
 bundle_name='index-hccf-'+hashlib.sha256(patched.encode()).hexdigest()[:10]+'.js'
 (OUT/'assets'/bundle_name).write_text(patched)
 index=(SITE/'index.html').read_text()
