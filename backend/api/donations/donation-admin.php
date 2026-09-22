@@ -3,6 +3,7 @@ declare(strict_types=1);
 // Called only after backend/admin.php has authenticated the administrator.
 function donationAdminRows(PDO $db): array {
     $rows=[];
+    $campaigns=require __DIR__.'/cci-campaigns.php';
     foreach(['main','hccf'] as $source){
         $table=donationTable($source);
         $stmt=$db->prepare("SELECT d.*,COALESCE(p.gross,0) gross,COALESCE(p.refunds,0) refunds,COALESCE(p.payments,0) payments
@@ -11,8 +12,9 @@ function donationAdminRows(PDO $db): array {
         $stmt->execute([$source]);
         foreach($stmt->fetchAll() as $row){
             $row['amount_paise']=$source==='hccf'?(int)$row['amount_paise']:(int)$row['amount']*100;
+            $attribution=json_decode($row['attribution_json']??'{}',true)?:[];
             $rows[]=['id'=>$source.':'.$row['id'],'source'=>$source==='hccf'?'HCCF fundraiser':'Main donation page',
-                'campaign'=>$row['campaign']??'General HUManity donations','name_as_per_id'=>$row['name'],'email'=>$row['email'],'phone'=>$row['phone'],
+                'campaign'=>$row['campaign']??'General HUManity donations','home_name'=>$campaigns[$row['campaign']??'']['name']??'General HUManity donations','name_as_per_id'=>$row['name'],'email'=>$row['email'],'phone'=>$row['phone'],
                 'id_proof_type'=>$row['id_type']??'','id_number'=>$row['id_number']??'',
                 'donation_type'=>$row['donation_type'],'amount_per_payment_inr'=>$row['amount_paise']/100,
                 'received_inr'=>max(0,(int)$row['gross']-(int)$row['refunds'])/100,
@@ -20,7 +22,7 @@ function donationAdminRows(PDO $db): array {
                 'refunds_inr'=>(int)$row['refunds']/100,'payments_received'=>$row['payments'],'status'=>$row['status'],
                 'subscription_status'=>$row['subscription_status']??'','razorpay_order_id'=>$row['razorpay_order_id']??'',
                 'razorpay_subscription_id'=>$row['razorpay_subscription_id']??'','first_payment_id'=>$row['razorpay_payment_id']??'',
-                'mode'=>$row['mode']??donationMode('main'),'created_at'=>$row['created_at']];
+                'mode'=>$row['mode']??donationMode('main'),'utm_source'=>$attribution['utm_source']??'','utm_medium'=>$attribution['utm_medium']??'','utm_campaign'=>$attribution['utm_campaign']??'','utm_content'=>$attribution['utm_content']??'','ad_id'=>$attribution['ad_id']??'','adset_id'=>$attribution['adset_id']??'','campaign_id'=>$attribution['campaign_id']??'','created_at'=>$row['created_at']];
         }
     }
     usort($rows,fn($a,$b)=>strcmp($b['created_at'],$a['created_at']));return $rows;

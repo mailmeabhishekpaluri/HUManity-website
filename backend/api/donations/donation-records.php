@@ -50,6 +50,7 @@ function donationEnsureSchema(PDO $db): void {
         'donation_type'=>"VARCHAR(10) NOT NULL DEFAULT 'once'", 'commitment_months'=>'INT NOT NULL DEFAULT 12',
         'razorpay_subscription_id'=>'VARCHAR(100) NULL', 'razorpay_plan_id'=>'VARCHAR(100) NULL',
         'subscription_status'=>"VARCHAR(24) NOT NULL DEFAULT ''",
+        'attribution_json'=>'TEXT NULL',
     ]);
     donationAddColumns($db, 'donations', ['subscription_status'=>"VARCHAR(24) NOT NULL DEFAULT ''"]);
     $db->exec("CREATE TABLE IF NOT EXISTS donation_payments (
