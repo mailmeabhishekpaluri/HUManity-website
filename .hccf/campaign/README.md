@@ -12,6 +12,8 @@ Run `python3 .hccf/campaign/build.py --site-root . --output /tmp/hccf-build` fro
 
 The local preview is deliberately unable to create payments. It labels totals as live-site information rather than showing invented receipts.
 
+The header uses the full name **HUManity ChildCare Institution Fund**. The blue/amber visual design and Montserrat/Open Sans typography follow the existing HUManity website. The main hero uses the website's existing `manus-storage/Aug1_PSH5_1767167802826_44dce97d.jpg`, optimised into `assets/hccf-brand/`; its caption identifies it as general HUManity work. Individual home galleries remain matched to their own audit photos.
+
 ## Payments and records
 
 The backend allowlist in `backend/api/donations/cci-campaigns.php` is generated from `homes.json`. Creation and verification are bound to the selected home. The original `indian-gypsy-children-home-suryapet` ID and existing records are preserved. Main donation-page verification is unchanged.
@@ -19,6 +21,10 @@ The backend allowlist in `backend/api/donations/cci-campaigns.php` is generated 
 After a verified first payment and active/authenticated monthly subscription, ₹500/month contributes ₹6,000 and ₹1,000/month contributes ₹12,000 to the yearly committed total. Actual net receipts are separate. Renewals add receipts without counting the yearly commitment twice. Refunds and inactive subscriptions adjust the totals. Payments already in progress and recurring instalments may complete after the target is reached.
 
 The authenticated donation dashboard contains home name, donor government-ID fields, actual receipts, yearly commitment, provider references and optional ad labels. The payment history includes each verified instalment. New `attribution_json` storage is added automatically without removing existing records. Keep the existing binary joins: they handle differing legacy database collations.
+
+After a verified payment, **Make another donation** opens a fresh form, clears personal/ID fields and defaults to one-time giving. The previous reference remains visible; monthly donors are told that their existing subscription continues. Pending confirmation cannot be bypassed, and a completed campaign goal disables another gift. `test-donate-again.mjs` exercises these flows with jsdom and entirely mocked network/provider calls; use `HCCF_TEST_DEPS` to point at a folder containing jsdom.
+
+The FAQ and form explain that donor details support donation receipts and 80G documentation. The campaign owner's 50% benefit is described as a deduction from qualifying taxable income, subject to eligibility and limits. It is not a 50% tax refund; individuals choosing the new tax regime cannot claim Section 80G. The organisation's receipt/documentation process remains separate from the payment UI. Wording reference: [Income Tax Department 80G FAQ](https://www.incometax.gov.in/iec/foportal/sites/default/files/2025-12/FAQs_80G_Section_mentioned_%28final%29_to_upload.pdf).
 
 For ongoing subscription/refund reconciliation, configure the Razorpay webhook and `CCI_RAZORPAY_WEBHOOK_SECRET` as described in the parent `.hccf/SETUP.md`. Deployment does not configure Razorpay or prove that live recurring charges work. Admin **Sync payments** remains the manual recovery path. No live payments were created during this redesign.
 
