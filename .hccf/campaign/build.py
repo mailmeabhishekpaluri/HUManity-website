@@ -11,6 +11,8 @@ args=parser.parse_args()
 OUT=args.output; SITE=args.site_root
 GOOGLE_TAG=(SITE/'.hccf/google-tag.html').read_text()
 GOOGLE_TAG_BODY=(SITE/'.hccf/google-tag-body.html').read_text()
+META_PIXEL=(SITE/'.hccf/meta-pixel.html').read_text()
+META_PIXEL_BODY=(SITE/'.hccf/meta-pixel-body.html').read_text()
 homes=json.loads((HERE/'homes.json').read_text())
 assert 1 <= len(homes) <= 30 and len({x['id'] for x in homes})==len(homes)
 assert all(re.fullmatch('[a-z0-9-]{1,80}',x['id']) and isinstance(x['goal'],int) and x['goal']>0 for x in homes)
@@ -87,8 +89,8 @@ def landing(home):
 def document(content,title,description,url,image,config,css,js):
     cfg=json.dumps(config,ensure_ascii=False).replace('<','\\u003c')
     return f'''<!doctype html><html lang="en"><head>
-{GOOGLE_TAG}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{h(title)}</title><meta name="description" content="{h(description)}"><link rel="canonical" href="{ORIGIN+url}"><meta property="og:type" content="website"><meta property="og:site_name" content="HUManity Foundation"><meta property="og:title" content="{h(title)}"><meta property="og:description" content="{h(description)}"><meta property="og:url" content="{ORIGIN+url}"><meta property="og:image" content="{ORIGIN+image}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{h(title)}"><meta name="twitter:description" content="{h(description)}"><meta name="twitter:image" content="{ORIGIN+image}"><meta name="theme-color" content="#087da3"><link rel="icon" href="{LOGO}"><link rel="stylesheet" href="/assets/{css}"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin></head><body class="{config['page']}">
-{GOOGLE_TAG_BODY}<noscript><p class="noscript-note">Enable JavaScript to see live fundraising totals and make a secure donation. For help, call +91 99129 62885.</p></noscript>{content}<script id="hccf-page" type="application/json">{cfg}</script><script type="module" src="/assets/{js}"></script></body></html>'''
+{GOOGLE_TAG}{META_PIXEL}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{h(title)}</title><meta name="description" content="{h(description)}"><link rel="canonical" href="{ORIGIN+url}"><meta property="og:type" content="website"><meta property="og:site_name" content="HUManity Foundation"><meta property="og:title" content="{h(title)}"><meta property="og:description" content="{h(description)}"><meta property="og:url" content="{ORIGIN+url}"><meta property="og:image" content="{ORIGIN+image}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{h(title)}"><meta name="twitter:description" content="{h(description)}"><meta name="twitter:image" content="{ORIGIN+image}"><meta name="theme-color" content="#087da3"><link rel="icon" href="{LOGO}"><link rel="stylesheet" href="/assets/{css}"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin></head><body class="{config['page']}">
+{GOOGLE_TAG_BODY}{META_PIXEL_BODY}<noscript><p class="noscript-note">Enable JavaScript to see live fundraising totals and make a secure donation. For help, call +91 99129 62885.</p></noscript>{content}<script id="hccf-page" type="application/json">{cfg}</script><script type="module" src="/assets/{js}"></script></body></html>'''
 
 (OUT/'assets').mkdir(parents=True,exist_ok=True)
 for name in ['campaign.css','campaign.js']:

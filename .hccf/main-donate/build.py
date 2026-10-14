@@ -13,6 +13,8 @@ args = parser.parse_args()
 OUT = args.output
 GOOGLE_TAG = (args.site_root/'.hccf/google-tag.html').read_text()
 GOOGLE_TAG_BODY = (args.site_root/'.hccf/google-tag-body.html').read_text()
+META_PIXEL = (args.site_root/'.hccf/meta-pixel.html').read_text()
+META_PIXEL_BODY = (args.site_root/'.hccf/meta-pixel-body.html').read_text()
 assets = OUT/'assets'; assets.mkdir(parents=True, exist_ok=True)
 LOGO = '/manus-storage/Logos-2_1766126722043_d1980132.png'
 ORIGIN = 'https://humanityorg.foundation'
@@ -55,12 +57,12 @@ faq_html = ''.join(f'<details {"id=tax-details" if index == 1 else ""}><summary>
 description = 'Support a child with ₹2,000 a month. Give monthly or once to HUManity Foundation. Eligible donations qualify for a 50% deduction under Section 80G.'
 html = f'''<!doctype html>
 <html lang="en"><head>
-{GOOGLE_TAG}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{GOOGLE_TAG}{META_PIXEL}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Support a Child · Donate to HUManity Foundation</title><meta name="description" content="{description}">
 <link rel="canonical" href="{ORIGIN}/donate/"><meta property="og:type" content="website"><meta property="og:site_name" content="HUManity Foundation"><meta property="og:title" content="A little each month. A childhood of possibility."><meta property="og:description" content="{description}"><meta property="og:url" content="{ORIGIN}/donate/"><meta property="og:image" content="{ORIGIN}/assets/main-donate/childhood-social.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#087da3"><link rel="icon" href="{LOGO}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="{base_css}"><link rel="stylesheet" href="{css}"></head>
 <body class="main-donate">
-{GOOGLE_TAG_BODY}<a class="skip" href="#main">Skip to content</a>
+{GOOGLE_TAG_BODY}{META_PIXEL_BODY}<a class="skip" href="#main">Skip to content</a>
 <header class="site-header"><div class="wrap header-inner"><a class="brand" href="/" aria-label="HUManity Foundation home"><img src="{LOGO}" alt="HUManity Foundation" width="116" height="55"><span class="brand-label"><strong>Give with HUManity</strong><span>Humanity Uplifting Mankind</span></span></a><nav class="header-nav" aria-label="Donation"><span class="header-security">{icon('lock')} Secure giving</span><a class="btn" href="#donate">Donate now <span aria-hidden="true">↗</span></a></nav></div></header>
 <noscript><p class="noscript-note">Enable JavaScript to make a secure donation. For help, call +91 99129 62885.</p></noscript>
 <main id="main"><section class="giving-hero"><svg class="giving-motif" viewBox="0 0 300 300" aria-hidden="true"><circle cx="150" cy="150" r="142"/><circle cx="150" cy="150" r="117"/><path d="m61 146 89-77 89 77M80 131v99h140v-99M150 173c-34-20-38-39-25-47 11-7 21 0 25 7 4-7 14-14 25-7 13 8 9 27-25 47Z"/></svg>
