@@ -11,6 +11,7 @@ parser.add_argument('--output', type=Path, default=HERE/'deploy')
 parser.add_argument('--campaign-source', type=Path, default=HERE.parent/('campaign' if HERE.parent.name == '.hccf' else 'campaign-redesign'))
 args = parser.parse_args()
 OUT = args.output
+GOOGLE_TAG = (args.site_root/'.hccf/google-tag.html').read_text()
 assets = OUT/'assets'; assets.mkdir(parents=True, exist_ok=True)
 LOGO = '/manus-storage/Logos-2_1766126722043_d1980132.png'
 ORIGIN = 'https://humanityorg.foundation'
@@ -52,7 +53,8 @@ faqs = [
 faq_html = ''.join(f'<details {"id=tax-details" if index == 1 else ""}><summary>{escape(question)}</summary><p>{escape(answer)}</p></details>' for index,(question,answer) in enumerate(faqs))
 description = 'Support a child with ₹2,000 a month. Give monthly or once to HUManity Foundation. Eligible donations qualify for a 50% deduction under Section 80G.'
 html = f'''<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head>
+{GOOGLE_TAG}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Support a Child · Donate to HUManity Foundation</title><meta name="description" content="{description}">
 <link rel="canonical" href="{ORIGIN}/donate/"><meta property="og:type" content="website"><meta property="og:site_name" content="HUManity Foundation"><meta property="og:title" content="A little each month. A childhood of possibility."><meta property="og:description" content="{description}"><meta property="og:url" content="{ORIGIN}/donate/"><meta property="og:image" content="{ORIGIN}/assets/main-donate/childhood-social.jpg"><meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#087da3"><link rel="icon" href="{LOGO}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="{base_css}"><link rel="stylesheet" href="{css}"></head>
