@@ -1,0 +1,8 @@
+{
+  "routes": [
+    "/donate/"
+  ],
+  "css": "/assets/main-donate-5d6b32213a.css",
+  "js": "/assets/main-donate-8b619f9cc0.js",
+  "baseCss": "/assets/hccf-campaign-6a5282aab2.css"
+}

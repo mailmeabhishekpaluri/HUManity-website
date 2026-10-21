@@ -1,7 +1,7 @@
 """Build fast, standalone HCCF pages and the existing SPA entry-point bridge."""
 from pathlib import Path
 from html import escape
-import argparse, hashlib, json, re, shutil
+import argparse, hashlib, json, re, shutil, runpy
 
 HERE=Path(__file__).resolve().parent
 parser=argparse.ArgumentParser()
@@ -134,11 +134,15 @@ for component,route,label in [('nse','/wheelsofhope/fund/','Open the HCCF campai
     end=patched.index(boundary,start)+1
     bridge='function '+component+'(){N.useEffect(()=>{window.location.replace("'+route+'"+window.location.search+window.location.hash)},[]);return N.createElement("main",{style:{padding:"80px 24px",textAlign:"center"}},N.createElement("a",{href:"'+route+'"},"'+label+'"))}\n'
     patched=patched[:start]+bridge+patched[end:]
+# Retain the approved homepage and responsive menu on every campaign build.
+homepage=runpy.run_path(str(SITE/'.hccf/homepage-conference/homepage.py'))
+patched=homepage['patch_bundle'](patched)
+homepage_css,homepage_files=homepage['build_assets'](OUT)
 bundle_name='index-hccf-'+hashlib.sha256(patched.encode()).hexdigest()[:10]+'.js'
 (OUT/'assets'/bundle_name).write_text(patched)
 index=(SITE/'index.html').read_text()
-index=re.sub(r'/assets/index-(?:hccf-[a-f0-9]+|D3rKJrP3)\.js','/assets/'+bundle_name,index)
+index=homepage['update_index'](index,bundle_name,homepage_css)
 index=re.sub(r'<link rel="stylesheet" href="/assets/cci-fundraiser\.css[^\"]*">\s*','',index)
 (OUT/'index.html').write_text(index)
-(HERE/'build-manifest.json').write_text(json.dumps({'bundle':bundle_name,'css':css,'js':js,'routes':[BASE]+[BASE+x['id']+'/' for x in homes]},indent=2))
+(HERE/'build-manifest.json').write_text(json.dumps({'bundle':bundle_name,'css':css,'js':js,'homepageCss':homepage_css,'homepageAssets':homepage_files,'routes':[BASE]+[BASE+x['id']+'/' for x in homes]},indent=2))
 print(f'Built HCCF hub + {len(homes)} standalone home pages; shared assets: {css}, {js}.')

@@ -1,0 +1,23 @@
+{
+  "bundle": "index-hccf-cb851b54d3.js",
+  "css": "hccf-campaign-6a5282aab2.css",
+  "js": "hccf-campaign-2267dbb49a.js",
+  "homepageCss": "home-conference-3daa9c59cc.css",
+  "homepageAssets": [
+    "assets/home-conference-3daa9c59cc.css",
+    "assets/homepage-conference/mission-path-640.webp",
+    "assets/homepage-conference/mission-path-1200.webp",
+    "assets/homepage-conference/conference-silhouette-640.webp",
+    "assets/homepage-conference/conference-silhouette-1200.webp"
+  ],
+  "routes": [
+    "/wheelsofhope/fund/",
+    "/wheelsofhope/fund/gypsy-home-macharam/",
+    "/wheelsofhope/fund/chayutha-ashramam-wanaparthy/",
+    "/wheelsofhope/fund/gnana-saraswathi-ashram-nagarkurnool/",
+    "/wheelsofhope/fund/meyers-balabhavan-nalgonda/",
+    "/wheelsofhope/fund/indian-gypsy-children-home-suryapet/",
+    "/wheelsofhope/fund/daiva-krupa-children-home-mahabubabad/",
+    "/wheelsofhope/fund/asha-bhavan-childrens-home-mahabubabad/"
+  ]
+}

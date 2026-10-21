@@ -7,3 +7,4 @@
 @media(max-width:360px){.main-donate .brand-label{max-width:112px}.main-donate .brand img{width:74px}.main-donate .brand-label strong{font-size:10px}.main-donate .header-nav .btn{max-width:73px;font-size:9px}.giving-story h1{font-size:34px}.child-support{gap:13px}.support-copy{padding-left:13px;font-size:11px}.support-number{font-size:28px}.main-donate .donation-card{padding:22px 16px}.main-donate .donation-card h2{font-size:24px}}
 @media(max-width:360px){.giving-photo figcaption strong{font-size:18px}.giving-photo figcaption{padding-top:40px}.giving-photo-label{font-size:7px;top:11px;left:11px}}
 @media(prefers-reduced-motion:reduce){.main-donate *{scroll-behavior:auto!important;transition:none!important}.main-donate .btn:hover{transform:none}}
+@media(max-width:1199px){.main-donate .donor-field input,.main-donate .donor-field select,.main-donate .custom-amount input{font-size:16px}}
