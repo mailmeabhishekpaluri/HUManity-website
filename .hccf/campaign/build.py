@@ -112,27 +112,33 @@ api=OUT/'backend/api/donations';api.mkdir(parents=True,exist_ok=True)
 
 # The rest of the deployed app remains byte-for-byte unchanged. SPA visits redirect
 # to the lightweight static campaign route; direct ad traffic never loads the SPA.
-app_name='app.html' if (SITE/'app.html').exists() or (OUT/'app.html').exists() else 'index.html'
-app_source=SITE/app_name if (SITE/app_name).exists() else OUT/app_name
 bundle=(SITE/'assets/index-D3rKJrP3.js').read_text()
 patched=bundle
-bridges=[('nse','/wheelsofhope/fund/','Open the HCCF campaign'),('tie','/donate/','Open the HUManity donation page')]
-if app_name=='app.html':
-    bridges.append(('vae','/','Open the HUManity homepage'))
-boundaries={'nse':'}function ase()','tie':'}var ay="Checkbox",','vae':'}const Nae='}
-for component,route,label in bridges:
+# Keep the original homepage and shared navigation. Remove only its Childhood
+# Allies card (including the tracker and signup), then fill that hero space.
+home_start=patched.index('function vae()')
+home_end=patched.index('}const Nae=',home_start)+1
+home=patched[home_start:home_end]
+ally_card=',u.jsxDEV("div",{"data-loc":"client/src/pages/home.tsx:163",className:"w-full lg:col-span-3",children:u.jsxDEV(Qne,{"data-loc":"client/src/pages/home.tsx:163"},void 0,!1,{fileName:"/home/ubuntu/humanityorg-foundation/client/src/pages/home.tsx",lineNumber:163,columnNumber:90},this)},void 0,!1,{fileName:"/home/ubuntu/humanityorg-foundation/client/src/pages/home.tsx",lineNumber:163,columnNumber:11},this)'
+assert home.count(ally_card)==1
+home=home.replace(ally_card,'')
+home=home.replace('lg:grid-cols-12','lg:grid-cols-[0.95fr_1.05fr]',1)
+home=home.replace('className:"max-w-2xl lg:col-span-4"','className:"max-w-2xl"',1)
+home=home.replace('className:"w-full lg:col-span-5"','className:"w-full"',1)
+patched=patched[:home_start]+home+patched[home_end:]
+for component,route,label in [('nse','/wheelsofhope/fund/','Open the HCCF campaign'),('tie','/donate/','Open the HUManity donation page')]:
     start=patched.index('function '+component+'()')
     # Explicit boundaries for the pinned original bundle. The main donation
     # component is followed by shared checkbox variables; preserve those too.
-    boundary=boundaries[component]
+    boundary='}function ase()' if component=='nse' else '}var ay="Checkbox",'
     end=patched.index(boundary,start)+1
     bridge='function '+component+'(){N.useEffect(()=>{window.location.replace("'+route+'"+window.location.search+window.location.hash)},[]);return N.createElement("main",{style:{padding:"80px 24px",textAlign:"center"}},N.createElement("a",{href:"'+route+'"},"'+label+'"))}\n'
     patched=patched[:start]+bridge+patched[end:]
 bundle_name='index-hccf-'+hashlib.sha256(patched.encode()).hexdigest()[:10]+'.js'
 (OUT/'assets'/bundle_name).write_text(patched)
-index=app_source.read_text()
+index=(SITE/'index.html').read_text()
 index=re.sub(r'/assets/index-(?:hccf-[a-f0-9]+|D3rKJrP3)\.js','/assets/'+bundle_name,index)
 index=re.sub(r'<link rel="stylesheet" href="/assets/cci-fundraiser\.css[^\"]*">\s*','',index)
-(OUT/app_name).write_text(index)
+(OUT/'index.html').write_text(index)
 (HERE/'build-manifest.json').write_text(json.dumps({'bundle':bundle_name,'css':css,'js':js,'routes':[BASE]+[BASE+x['id']+'/' for x in homes]},indent=2))
 print(f'Built HCCF hub + {len(homes)} standalone home pages; shared assets: {css}, {js}.')

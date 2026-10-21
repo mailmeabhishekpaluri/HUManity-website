@@ -3,7 +3,7 @@ RewriteEngine On
 RewriteBase /
 RewriteRule ^index\.html$ - [L]
 # Serve the public Wheels of Hope app route even though its fund directory exists.
-RewriteRule ^wheelsofhope$ /app.html [L]
+RewriteRule ^wheelsofhope$ /index.html [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . /app.html [L]
+RewriteRule . /index.html [L]

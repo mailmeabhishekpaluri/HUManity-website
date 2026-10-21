@@ -8,7 +8,7 @@ The hub at `/wheelsofhope/fund/` lists seven homes with separate ₹6 lakh yearl
 
 Run `python3 .hccf/campaign/build.py --site-root . --output /tmp/hccf-build` from the repository root. The build generates the hub, individual pages, public campaign registry, content-hashed CSS/JS, and the existing SPA's HCCF entry-point bridge. Publish those outputs together with the matching photo assets and the updated donation PHP files. The original `assets/index-D3rKJrP3.js` is the baseline for the bridge. The rest of the original SPA is preserved.
 
-With the standalone foundation homepage, the application shell is `app.html`. The builder updates that shell and bridges internal Home navigation to `/`, while leaving the homepage's `index.html` intact. When rebuilding both, run `.hccf/homepage/build.py` first and this builder second into the same output directory. See `../homepage/README.md` for the complete build order.
+The original homepage and shared navigation remain in the SPA. The builder removes only the homepage's Childhood Allies card, tracker and signup, and balances the two remaining hero columns. All other homepage sections and its videos retain their previous design.
 
 `prepare-photos.py` uses Pillow and pypdf to prepare 640px/1200px WebP images and JPEG social previews from the supplied audit. See its arguments before using it with another report. Audit pages are private source material: publish only approved, home-matched photographs, never the full audit or health/protection details.
 
