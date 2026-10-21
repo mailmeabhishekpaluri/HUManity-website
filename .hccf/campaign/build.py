@@ -112,21 +112,27 @@ api=OUT/'backend/api/donations';api.mkdir(parents=True,exist_ok=True)
 
 # The rest of the deployed app remains byte-for-byte unchanged. SPA visits redirect
 # to the lightweight static campaign route; direct ad traffic never loads the SPA.
+app_name='app.html' if (SITE/'app.html').exists() or (OUT/'app.html').exists() else 'index.html'
+app_source=SITE/app_name if (SITE/app_name).exists() else OUT/app_name
 bundle=(SITE/'assets/index-D3rKJrP3.js').read_text()
 patched=bundle
-for component,route,label in [('nse','/wheelsofhope/fund/','Open the HCCF campaign'),('tie','/donate/','Open the HUManity donation page')]:
+bridges=[('nse','/wheelsofhope/fund/','Open the HCCF campaign'),('tie','/donate/','Open the HUManity donation page')]
+if app_name=='app.html':
+    bridges.append(('vae','/','Open the HUManity homepage'))
+boundaries={'nse':'}function ase()','tie':'}var ay="Checkbox",','vae':'}const Nae='}
+for component,route,label in bridges:
     start=patched.index('function '+component+'()')
     # Explicit boundaries for the pinned original bundle. The main donation
     # component is followed by shared checkbox variables; preserve those too.
-    boundary='}function ase()' if component=='nse' else '}var ay="Checkbox",'
+    boundary=boundaries[component]
     end=patched.index(boundary,start)+1
     bridge='function '+component+'(){N.useEffect(()=>{window.location.replace("'+route+'"+window.location.search+window.location.hash)},[]);return N.createElement("main",{style:{padding:"80px 24px",textAlign:"center"}},N.createElement("a",{href:"'+route+'"},"'+label+'"))}\n'
     patched=patched[:start]+bridge+patched[end:]
 bundle_name='index-hccf-'+hashlib.sha256(patched.encode()).hexdigest()[:10]+'.js'
 (OUT/'assets'/bundle_name).write_text(patched)
-index=(SITE/'index.html').read_text()
+index=app_source.read_text()
 index=re.sub(r'/assets/index-(?:hccf-[a-f0-9]+|D3rKJrP3)\.js','/assets/'+bundle_name,index)
 index=re.sub(r'<link rel="stylesheet" href="/assets/cci-fundraiser\.css[^\"]*">\s*','',index)
-(OUT/'index.html').write_text(index)
+(OUT/app_name).write_text(index)
 (HERE/'build-manifest.json').write_text(json.dumps({'bundle':bundle_name,'css':css,'js':js,'routes':[BASE]+[BASE+x['id']+'/' for x in homes]},indent=2))
 print(f'Built HCCF hub + {len(homes)} standalone home pages; shared assets: {css}, {js}.')
